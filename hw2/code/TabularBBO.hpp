@@ -21,6 +21,17 @@ public:
 
 	void episodicUpdate(std::mt19937_64& generator) override;
 
+    int oneHotToInt(Eigen::VectorXd s) const;
+
 private:
 	// @TODO: Define aditional variables here. You can also define additional functions here (or in public: if you would like)
+	int numStates;
+	int numActions;
+	int maxEps;
+    int epCount;
+	double gamma;
+
+	Eigen::MatrixXd theta;
+	// Estimate/Expected value of returns under theta policy
+	double thetaJHat;
 };

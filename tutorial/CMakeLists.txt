@@ -5,4 +5,4 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(tutorial main.cpp Rectangle.h Rectangle.cpp Circle.cpp Circle.h Shape.h)
 
-include_directories("/Users/sanchitnevgi/work/rl/lib")
+include_directories("/Users/sanchitnevgi/work/reinforcement-learning/lib")

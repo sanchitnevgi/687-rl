@@ -3,6 +3,7 @@ cmake-build-debug
 .idea
 lib
 .DS_Store
+cmake-build-release
 
 # Created by https://www.toptal.com/developers/gitignore/api/cmake,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=cmake,c++

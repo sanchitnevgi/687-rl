@@ -24,14 +24,15 @@ public:
     int oneHotToInt(Eigen::VectorXd s) const;
 
 private:
-	// @TODO: Define aditional variables here. You can also define additional functions here (or in public: if you would like)
-	int numStates;
-	int numActions;
-	int maxEps;
-    int epCount;
-	double gamma;
+    int numStates;				// How many discrete states?
+    int numActions;				// How many discrete actions?
+    int maxEps;					// How many episodes will be run?
+    int epCount;				// Track how many episodes have been run.
+    double gamma;				// Discount parameter
 
-	Eigen::MatrixXd theta;
-	// Estimate/Expected value of returns under theta policy
-	double thetaJHat;
+    Eigen::MatrixXd curTheta;	// The current best policy we have found
+    double curThetaJHat;		// $\hat J(\theta_\text{cur})$ in LaTeX, this is the estimate of how good the current policy is
+
+    Eigen::MatrixXd newTheta;	// The policy we're currently running and thinking of switching curTheta to
+    double newThetaJHat;		// This will store our estimate of how good newTheta is.
 };

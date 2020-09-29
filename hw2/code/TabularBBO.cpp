@@ -15,9 +15,9 @@ TabularBBO::TabularBBO(const int& stateDim, const int& numActions, const double&
 	this->N = N;
 
 	// We begin with a uniform random policy
-	theta = MatrixXd::Zero(numStates, numActions);
+    curTheta = newTheta = MatrixXd::Zero(numStates, numActions);
+    curThetaJHat = -INFINITY;
 
-	thetaJHat = -INFINITY;
 	epCount = 0;
 }
 
@@ -29,7 +29,7 @@ int TabularBBO::getAction(const Eigen::VectorXd& s, std::mt19937_64& generator) 
     assert(state != (int)s.size());
 
     // Get the action logits for current state and convert to softmax probability
-    VectorXd actionProbabilities = theta.row(state).array().exp();
+    VectorXd actionProbabilities = newTheta.row(state).array().exp();
     actionProbabilities.array() /= actionProbabilities.sum();
 
     // Sample from the probability
@@ -46,60 +46,60 @@ int TabularBBO::getAction(const Eigen::VectorXd& s, std::mt19937_64& generator) 
 // Reset the agent entirely - to a blank slate prior to learning
 void TabularBBO::reset(std::mt19937_64& generator)
 {
-    // We begin with a uniform random policy
-    theta = MatrixXd::Zero(numStates, numActions);
-
-    thetaJHat = -INFINITY;
+    curTheta = newTheta = MatrixXd::Zero(numStates, numActions);
+    curThetaJHat = -INFINITY;
     epCount = 0;
 
-	EpisodicAgent::reset(generator);
+    EpisodicAgent::reset(generator);
 }
 
 void TabularBBO::episodicUpdate(mt19937_64& generator)
 {
-	// @TODO: Write this function
-	epCount += N;
+    // Track how many episodes have passed
+    epCount += N;
 
-	double best_local_return = -INFINITY;
-    MatrixXd better_theta;
+    // We are going to compute newThetaJHat (an estimate of how good the new policy is), and will then
+    // see if it is better than the best policy we found so far.
+    newThetaJHat = 0;
 
-    for (int ep = 0; ep < N; ++ep) {
-        int epLen = (int) rewards[ep].size();
-
-        double gamma_t = 1, local_return = 0;
-
-        for (int t = 0; t < epLen; ++t) {
-            local_return += gamma_t * rewards[ep][t];
-            gamma_t *= gamma;
+    // Loop over the N episodes
+    for (int epCount = 0; epCount < N; epCount++)
+    {
+        // Compute the return
+        double curGamma = 1;
+        int epLen = (int)rewards[epCount].size();
+        for (int t = 0; t < epLen; t++)
+        {
+            newThetaJHat += curGamma * rewards[epCount][t];
+            curGamma *= gamma;
         }
+    }
+    newThetaJHat /= (double) N;
 
-        // Here we have the return for this episode, check if it better than best_local
-        // If it is, update theta
-        // Use the actions taken in the episode to create a new "policy"
-        if (local_return <= best_local_return) {
-            continue;
-        }
+    // Is the new policy better than our current best?
+    if (newThetaJHat > curThetaJHat)
+    {
+        // It looks like it! Change our current best
+        curTheta = newTheta;
+        curThetaJHat = newThetaJHat;
+    }
 
-        best_local_return = local_return;
+    // For the last 10% of episodes use the best policy
+    if (epCount > (int)(maxEps*0.9))
+    {
+        newTheta = curTheta;
+        return;
+    }
 
-        // Construct better "policy"
-        better_theta = theta;
-
-        vector<VectorXd> episode_states = states[ep];
-        vector<int> episode_actions = actions[ep];
-
-        for (int t = 0; t < epLen; ++t) {
-            int given_state = oneHotToInt(episode_states[t]);
-            int action_taken = episode_actions[t];
-
-            // Since taking this action in this state, has given better reward, give it more "importance"
-            better_theta.row(given_state)[action_taken] += 1;
-
-            // TODO: Give the other actions less importance?
+    for (int s = 0; s < numStates; s++)
+    {
+        for (int a = 0; a < numActions; a++)
+        {
+            normal_distribution<double> d(curTheta(s, a), 5);
+            newTheta(s, a) = d(generator);
         }
     }
 
-    theta = better_theta;
 }
 
 int TabularBBO::oneHotToInt(VectorXd s) const

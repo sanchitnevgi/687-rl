@@ -16,7 +16,7 @@ TabularBBO::TabularBBO(const int& stateDim, const int& numActions, const double&
 
 	// We begin with a uniform random policy
     curTheta = newTheta = MatrixXd::Zero(numStates, numActions);
-    curThetaJHat = -INFINITY;
+    curThetaJHat = 0;
 
 	epCount = 0;
 }
@@ -47,7 +47,7 @@ int TabularBBO::getAction(const Eigen::VectorXd& s, std::mt19937_64& generator) 
 void TabularBBO::reset(std::mt19937_64& generator)
 {
     curTheta = newTheta = MatrixXd::Zero(numStates, numActions);
-    curThetaJHat = -INFINITY;
+    curThetaJHat = 0;
     epCount = 0;
 
     EpisodicAgent::reset(generator);
@@ -95,7 +95,7 @@ void TabularBBO::episodicUpdate(mt19937_64& generator)
     {
         for (int a = 0; a < numActions; a++)
         {
-            normal_distribution<double> d(curTheta(s, a), 5);
+            normal_distribution<double> d(curTheta(s, a), 1);
             newTheta(s, a) = d(generator);
         }
     }

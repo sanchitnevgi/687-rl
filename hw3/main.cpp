@@ -9,7 +9,7 @@ near the top of the IDE that says "Debug" or "Release". Changing this changes th
 your code as it runs watching variable values change, and also provides more information if your code crashes. Release
 results in code that runs *much* faster. However, it will give cryptic errors when it crashes (not telling you the 
 line that it crashed on for example) and does not allow you to use most of the features of your debugger. Generally,
-you use debug mode when something isn't working right or when first running your code, and then switch to release.
+you use debug mode when soemthing isn't working right or when first running your code, and then switch to release.
 
 2. In visual studio, hit F7 to compile your code. If there are errors, hit F4 to cycle through the errors. Run your code with F5.
 If you are in release mode, run with ctrl+F5. Place a breakpoint with F9, step forwards with F10. Right click a breakpoint to set a
@@ -158,6 +158,7 @@ VectorXd valueIteration(const MDP& M, const bool & print = false, const double& 
 			// and the information stored in the MDP object M. Hint: read the rest of this code and understand it. This assignment can be completed by inserting one line
 			// below (mine extends to column 76, including whitespace). The missing line resembles another line somewhere in this code.
             vNew[s] = (M.R.row(s).transpose() + (M.gamma * M.P[s] * vCur).rowwise().sum()).maxCoeff();
+
 		}
 
 		// Check for termination. Take element-wise absolute value of (vNew-vCur). If the max element is <= epsilon, we are done.
@@ -191,7 +192,7 @@ void print(const Eigen::VectorXd& vStar, const MDP& M, const string& fileName, c
 	out << "Optimal policies:" << endl;
 	for (int s = 0; s < M.numStates; s++)
 	{
-		// From M, get the s'th row of the reward function, transpose it to be a column vector, add to it gamma (a floating point number) times the transition matrix for state s (which is a matrix with numActions rows and numStates cols) times the optmial value function (a column vector of length numStates)
+		// From M, get the s'th row of the reward function, transpose it to be a column vector, add to it gamma (a floating poitn number) times the transition matrix for state s (which is a matrix with numActions rows and numStates cols) times the optmial value function (a column vector of length numStates)
 		temp = M.R.row(s).transpose() + M.gamma * M.P[s] * vStar;	// Compute the expected return if each action is taken from this state and an optimal policy is followed thereafter
 		double maxActionValue = temp.maxCoeff();					// Get the largest expected return over all possible actions.
 		// Get all actions that achieve the maxActionValue
@@ -217,7 +218,7 @@ void run(const string& fileName)
 	VectorXd vStar;		// Where we will store the optimal value function. This object is from the Eigen linear algebra library.
 
 	cout << "Loading " << fileName << " into MDP object..." << endl;
-	M.loadFromFile("../input/" + fileName);					// In our MDP class we have a loadFromFile function that is called here. "input/" is a char*, the c++ built-in string. fileName is a standard library string. The + operator appends these and returns a standard library string. When new to C++, try to stick with standard library strings rather than using char*, except when manually entering a string in your code like here.
+	M.loadFromFile("/Users/sanchitnevgi/work/reinforcement-learning/hw3/input/" + fileName);					// In our MDP class we have a loadFromFile function that is called here. "input/" is a char*, the c++ built-in string. fileName is a standard library string. The + operator appends these and returns a standard library string. When new to C++, try to stick with standard library strings rather than using char*, except when manually entering a string in your code like here.
 
 	cout << "Loading complete. Running sanity checks." << endl;
 	if (M.sanityCheck())	// Without {  }, if statements, while loops, for loops, etc. are only over the following line. If you want more than two subsequent lines to be in the if statement (while loop, for loop, else if statement, etc) then use {  } as in the if-statement in main.
@@ -235,7 +236,7 @@ void run(const string& fileName)
 	//vStar = valueIteration(M, true);				// Run the value interation function that you will be writing. It is defined in valueIteration.hpp and implemented in valueIteration.cpp
 
 	cout << "Printing results to file..." << endl;
-	print(vStar, M, "output/" + fileName);	// Prints the optimal value function and optimal policy to the specified file
+	print(vStar, M, "/Users/sanchitnevgi/work/reinforcement-learning/hw3/output" + fileName);	// Prints the optimal value function and optimal policy to the specified file
 	cout << "Run on " << fileName << " complete." << endl << endl;
 }
 
@@ -252,11 +253,6 @@ void run(const string& fileName)
 // Be sure in the properties box that the top left "Configuration" matches the configuration you are using (or do this for "all configurations", both release and debug).
 int main(int argc, char* argv[])
 {
-    VectorXd ones = VectorXd::Ones(10);
-    VectorXd zeros = VectorXd::Zero(10);
-
-    VectorXd result = ones.cwiseProduct(zeros);
-
     if (argc == 1)		// Check if there were no command line arguments (the first is the path to the running executable)
 	{
 		// Ask the user for a file name and run value iteration on it

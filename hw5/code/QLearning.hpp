@@ -18,8 +18,27 @@ public:
 
 private:
 	// @TODO: Fill in any member variables and additional functions
+	int numStates;				//number of states		
+	int numActions;				//number of actions
+	int maxEps;					//maximum number of episodes
+	int epCount;				//episode count
+	double gamma;
+	Eigen::MatrixXd curQ;
+	double alpha;
+	Eigen::MatrixXd c;
+	Eigen::MatrixXd w;
+	int nTerms;
+	int env;
+	double epsilon;
+
+	bool phiInit = false;				
+	Eigen::VectorXd phi, phiPrime;
+
+	double maxQ(const Eigen::VectorXd& phi);
+	double maxQ(const int& s);
 
 	// Two helper functions that I used. You may not need these.
 	int ipow(const int& a, const int& b);
 	void incrementCounter(Eigen::VectorXd& buff, const int& maxDigit);
+	Eigen::VectorXd cosine_calculation(const Eigen::VectorXd& x);
 };

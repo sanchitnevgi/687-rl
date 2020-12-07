@@ -17,7 +17,31 @@ public:
 	void update(const Eigen::VectorXd& s, const int& a, const double& r, std::mt19937_64& generator) override;
 
 private:
-	// @TODO: Fill in any member variables and additional functions
+    int numActions;
+    int stateDim;
+
+    // Hyper-parameters
+    double alpha;
+    double gamma;
+    double epsilon;
+    int numFeatures;
+
+    int basis;
+    bool useFourier;
+    bool initPhi;
+
+    // Weights (to be learnt) for function approximation
+    Eigen::MatrixXd w;
+    // Feature vector
+    Eigen::VectorXd phi;
+    // Q-function for GridWorld
+    Eigen::MatrixXd q;
+
+    Eigen::VectorXd getFeatures(const Eigen::VectorXd& s);
+    int convertOneHotToInt(Eigen::VectorXd s);
+
+	int softmaxActionSelection(Eigen::VectorXd probabilities, std::mt19937_64& generator);
+    int epsilonGreedy(Eigen::VectorXd probabilities, std::mt19937_64& generator);
 
 	// Two helper functions that I used. You may not need these.
 	int ipow(const int& a, const int& b);

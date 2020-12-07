@@ -25,11 +25,10 @@
 // Include files that are part of this project. Using "", the compiler will search starting from the main project directory.
 #include "Environment.hpp"				// This is the specification for all environments. It is called an "abstract class" because you can't create an Environment object directly, but you can create objects that are of type Environment.
 #include "Gridworld.hpp"				// This is an example of an Environment - it is a subclass of the superclass Environment.
-#include "MountainCar.hpp"
-#include "CartPole.hpp"
 #include "Agent.hpp"					// This is the specification for all agents. It is an abstract class like Environment
-#include "Sarsa.hpp"
-#include "QLearning.hpp"
+#include "Manual.hpp"					// This is an agent that lets you type in actions from the console, and act as the agent.
+#include "REINFORCE.hpp"		
+#include "TabularBBO.hpp"				// This is the agent you will create
 
 // iostream, fstream, and random are part of the "standard libraries", std. To call functions in these libraries, you must write std:: before the call, to indicate
 // that you are referring to something within std. For example, std::cout, std::mt19937_64, etc. To avoid writing std everywhere, we can just say
@@ -65,6 +64,9 @@ VectorXd runAgentEnvironment(
 	const bool & updateBeforeNextAction,	// Does this agent update before or after the next action, A_{t+1} is chosen?
 	mt19937_64 & generator)					// Random number generator to use.
 {
+	// Wipe the agent to start a new trial
+	agt->reset(generator);	// If X is an object (instantation of some class) with a variable y, we write X.y usually. If X is a *pointer* to an object, we write X->y.
+	
 	// Create variables that we will use
 	int curAction, newAction;
 	double reward, curGamma;
@@ -116,49 +118,39 @@ VectorXd runAgentEnvironment(
 	return result;
 }
 
-// Run many agents on an environment, defined by its name, envName.
-void runEnvironment(const string & envName, const int & numTrials)
+int main(int argc, char* argv[])
 {
 	// Create objects we will use
 	mt19937_64 generator(0);		// Random number generator, seeded with zero
-	Environment* env;
-	if (envName.compare("Gridworld") == 0)
-		env = new Gridworld(generator);
-	else if (envName.compare("Mountain Car") == 0)
-		env = new MountainCar(generator);
-	else if (envName.compare("Cart Pole") == 0)
-		env = new CartPole(generator);
-	else
-	{
-		cout << "Error: Unknown environment name in runEnvironment." << endl;
-		exit(1);
-	}
-	
-	// Get some values once so we don't have to keep looking them up (i.e., so we can type less later)
-	int stateDim = env->getStateDim(), numActions = env->getNumActions(), maxEps = env->getMaxEps();
-	double gamma = env->getGamma();
+	Gridworld env(generator);		// Create the environment, in this case a Gridworld
+	int numTrials = 1000;	// Specify the number of trials to run and get the number of episodes per tiral.
 
+	// Get some values once so we don't have to keep looking them up (i.e., so we can type less later)
+	int stateDim = env.getStateDim(), numActions = env.getNumActions(), maxEps = env.getMaxEps();
+	double gamma = env.getGamma();
+	
 	/////
 	// If you wnat to use the manual agent, uncomment the line below, and comment out the line defining the agent to be a TabularRandomSearch object.
 	/////
+	//Manual a1;					// Create the agent
+	int N = 10;						// How many episodes are run between update calls within TabularRandomSearch?
+	REINFORCE a1(stateDim, numActions, gamma); //  REINFORCE doesn't take N, since it will always use N = 1.
+	TabularBBO a2(stateDim, numActions, gamma, N, maxEps);
+
 	MatrixXd returns_a1(numTrials, maxEps);	// Create a matrix to store the resulting returns. results(i,j) = the return on the j'th episode of the i'th trial.
 	MatrixXd returns_a2(numTrials, maxEps);	// Same as above, but for the second agent
+	cout << "Starting trial 1 of " << numTrials + 1 << endl;	// "cout" means "console out", and is our print command. Separate objects to print with the << symbol. Here we are printing a string, followed by an integer, followed by std::endl (end line).
 	for (int trial = 0; trial < numTrials; trial++)	// Loop over trials
 	{
-		// Create the agents for this trial
-		Sarsa a1(stateDim, numActions, envName);
-		QLearning a2(stateDim, numActions, envName);
-
-		// Print the trial progress.
-		if ((trial + 1) % (numTrials/10) == 0)					// % means "mod"
-			cout << "Starting trial " << trial + 1 << " of " << numTrials << endl;
+		if ((trial + 1) % 100 == 0)					// % means "mod"
+			cout << "Starting trial " << trial+1 << " of " << numTrials << endl;
 
 		// Run the agent on the environment for this trial, and store the result in the trial'th row of returns.
 		// The & before a1 and env indicates that we are passing pointers to a1, a2, and env. This is because runAgentEnvironment
 		// won't know the type of the agent and environment, only that they meet the specifications of Agent.hpp and Environment.hpp.
 		// So, on their end, these inputs are pointers to objects of unknown exact type, but which meet the Agent/Environment specifications.
-		returns_a1.row(trial) = runAgentEnvironment(&a1, env, maxEps, gamma, a1.updateBeforeNextAction(), generator).transpose();
-		returns_a2.row(trial) = runAgentEnvironment(&a2, env, maxEps, gamma, a2.updateBeforeNextAction(), generator).transpose();
+		returns_a1.row(trial) = runAgentEnvironment(&a1, &env, maxEps, gamma, a1.updateBeforeNextAction(), generator).transpose();
+		returns_a2.row(trial) = runAgentEnvironment(&a2, &env, maxEps, gamma, a2.updateBeforeNextAction(), generator).transpose();
 	}
 
 	// Convert returns into a vector of mean returns and the standard error (used for error bars)
@@ -173,32 +165,11 @@ void runEnvironment(const string & envName, const int & numTrials)
 		stderrReturns_a2[epCount] = stdError(returns_a2.col(epCount));
 	}
 
-	// Print the results to a file based on the environment name.
-	string fileName = envName + "_out.csv";
-	ofstream out(fileName.c_str());													// Create an "output file stream". This will actually create the file, but it will be empty
-	out << "Sarsa,QLearning,Sarsa Error Bar,QLearning Error Bar" << endl;
+	// Print the results to a file
+	ofstream out("out.csv");													// Create an "output file stream". This will actually create the file, but it will be empty
+	out << "REINFORCE,BBO,TRS Error Bar,BBO Error Bar" << endl;
 	for (int epCount = 0; epCount < maxEps; epCount++)
 		out << meanReturns_a1[epCount] << "," << meanReturns_a2[epCount] << ','
 		<< stderrReturns_a1[epCount] << "," << stderrReturns_a2[epCount] << endl;	// Just like "cout" was console out, we can write to the file stream that we created called "out".
 	out.close();																// Close the file. This will happen anyway when the object "out" falls out of scope. Still, it is good practice to close your files when you are done with them.
-
-	// Clean up memory
-	delete env;
-}
-
-int main(int argc, char* argv[])
-{
-	// Run Sarsa and Q-Learning an the Gridworld environment.
-//	cout << "Running Gridworld..." << endl;
-//	runEnvironment("Gridworld", 1000);
-	// Run Sarsa and Q-Learning an the MountainCar environment.
-	cout << endl << endl << "Running Mountain Car..." << endl;
-	runEnvironment("Mountain Car", 30);
-	// Run Sarsa and Q-Learning an the CartPole environment.
-	cout << endl << endl << "Running Cart Pole..." << endl;
-	runEnvironment("Cart Pole", 30);
-
-	// Print completion message and return 0 (no error).
-	cout << "Done!" << endl;
-	return 0;
 }

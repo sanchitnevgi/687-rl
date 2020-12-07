@@ -17,33 +17,31 @@ public:
 	void update(const Eigen::VectorXd& s, const int& a, const double& r, std::mt19937_64& generator) override;
 
 private:
-    int numActions;
-    int stateDim;
+	int numStates;
+	int numActions;
+    int env;
 
-    // Hyper-parameters
-    double alpha;
-    double gamma;
+	// Hyper-parameters
+	double gamma;
+	double alpha;
     double epsilon;
-    int numFeatures;
+    int features;
+    bool phiInit = false;
+    double lambda;
 
-    int basis;
-    bool useFourier;
-    bool initPhi;
-
-    // Weights (to be learnt) for function approximation
-    Eigen::MatrixXd w;
-    // Feature vector
-    Eigen::VectorXd phi;
-    // Q-function for GridWorld
-    Eigen::MatrixXd q;
-
-    Eigen::VectorXd getFeatures(const Eigen::VectorXd& s);
-    int convertOneHotToInt(Eigen::VectorXd s);
+	Eigen::MatrixXd c;
+	Eigen::MatrixXd w;
+	Eigen::MatrixXd trace;
+    Eigen::MatrixXd curQ;
+	Eigen::VectorXd phi, phiPrime;
 
     int softmaxActionSelection(Eigen::VectorXd probabilities, std::mt19937_64& generator);
+    int convertOneHotToInt(Eigen::VectorXd s);
     int epsilonGreedy(Eigen::VectorXd probabilities, std::mt19937_64& generator);
+    Eigen::VectorXd getFeatures(const Eigen::VectorXd& x);
 
 	// Two helper functions that I used. You may not need these.
 	int ipow(const int& a, const int& b);
 	void incrementCounter(Eigen::VectorXd& buff, const int& maxDigit);
+
 };

@@ -9,30 +9,55 @@ using namespace Eigen;
 */
 Sarsa::Sarsa(const int& stateDim, const int& numActions, const std::string & envName)
 {
-	// @TODO: Fill in this function
+	this->numActions = numActions;
+	this->stateDim = stateDim;
+
+	epsilon = 0.95;
+    initPhi = false;
 
 	// In the constructor, use envName to set hyperparameters.
 	// No not use envName to initialize the policy!
 	// I'm leaving in some of my code to show how you might structure this.
 	if (envName.compare("Mountain Car") == 0)
 	{
-		// @TODO: Set hyperparameters for Mountain Car.
+		alpha = 0.005;
+		gamma = 0.99;
+
+        useFourier = true;
+		basis = 2;
 	}
 	else if (envName.compare("Cart Pole") == 0)
 	{
-		// @TODO: Set hyperparameters for Cart Pole.
+		alpha = 0.0004;
+		gamma = 0.99;
+
+		useFourier = true;
+		basis = 4;
 	}
 	else if (envName.compare("Gridworld") == 0)
 	{
-		// @TODO: Set hyperparameters for Gridworld.
+		alpha = 0.4;
+		gamma = 0.999;
+
+		useFourier = false;
 	}
 	else
 	{
 		cout << "Error: Unknown environment name in Sarsa constructor." << endl;
 		exit(1);
 	}
-	
-	// @TODO: Fill in the remainder of this function.
+
+	if (useFourier)
+    {
+        numFeatures = ipow(basis + 1, stateDim);
+
+        phi = VectorXd::Zero(numFeatures);
+        w = MatrixXd::Zero(numActions, numFeatures);
+    }
+	else
+    {
+        q = MatrixXd::Zero(stateDim, numActions);
+    }
 }
 
 bool Sarsa::updateBeforeNextAction()
@@ -43,26 +68,139 @@ bool Sarsa::updateBeforeNextAction()
 // Epsilon-greedy or Softmax action selection
 int Sarsa::getAction(const Eigen::VectorXd& s, std::mt19937_64& generator)
 {
-	// @TODO: Fill in this function.
-	return 0; // Delete this line - this is just here to that the code compiles.
+    VectorXd actionProbabilities;
+    if (useFourier)
+    {
+        VectorXd phiPrime = getFeatures(s);
+        actionProbabilities = (w * phiPrime);
+    }
+    else
+    {
+        int currState = convertOneHotToInt(s);
+        actionProbabilities = q.row(currState);
+    }
+
+    actionProbabilities = actionProbabilities.array().exp();
+    actionProbabilities /= actionProbabilities.sum();
+
+    int action = softmaxActionSelection(actionProbabilities, generator);
+
+	return action;
+}
+
+int Sarsa::epsilonGreedy(VectorXd probabilities, std::mt19937_64& generator)
+{
+    uniform_real_distribution<double> distribution(0, 1);
+    double threshold = distribution(generator);
+
+    // Choose random action
+    if (threshold >= epsilon)
+    {
+        uniform_int_distribution<int> randomAction(0, numActions - 1);
+        int action =  randomAction(generator);
+
+        return action;
+    }
+    // Choose greedily
+    else
+    {
+
+    }
+
+    return 0;
+}
+
+int Sarsa::softmaxActionSelection(VectorXd probabilities, std::mt19937_64& generator)
+{
+    double value = uniform_real_distribution<double>(0, 1)(generator);
+    double runningSum = 0;
+
+    for (int action = 0; action < (int) probabilities.size(); ++action) {
+        runningSum += probabilities[action];
+        if (value <= runningSum) {
+            return action;
+        }
+    }
+
+    return numActions - 1;
 }
 
 // Tell the agent that it is at the start of a new episode
 void Sarsa::newEpisode()
 {
-	// @TODO: Fill in this function.
+	initPhi = false;
 }
 
 // Update given a (s,a,r,s') tuple
 void Sarsa::update(const Eigen::VectorXd& s, const int& a, const double& r, const Eigen::VectorXd& sPrime, const int & aPrime, std::mt19937_64& generator)
 {
-	// @TODO: Fill in this function.
+    if (useFourier)
+    {
+        if (!initPhi) {
+            phi = getFeatures(s);
+            initPhi = true;
+        }
+
+        VectorXd phiPrime = getFeatures(sPrime);
+
+        double delta = r + gamma * (r + w.row(aPrime).dot(phiPrime) - w.row(a).dot(phi));
+
+        for (int f = 0; f < numFeatures; ++f) {
+            w(a, f) += alpha * delta * phi[f];
+        }
+
+        phi = phiPrime;
+    }
+    else
+    {
+        int currState = convertOneHotToInt(s);
+        int nextState = convertOneHotToInt(sPrime);
+
+        double delta = r + gamma * q(nextState, aPrime) - q(currState, a);
+        q(currState, a) += alpha * delta;
+    }
 }
 
 // Let the agent update/learn when sPrime would be the terminal absorbing state
 void Sarsa::update(const Eigen::VectorXd& s, const int& a, const double& r, mt19937_64 & generator)
 {
-	// @TODO: Fill in this function.
+	if (useFourier)
+    {
+        double delta = r - w.row(a).dot(phi);
+
+        for (int f = 0; f < numFeatures; ++f) {
+            w(a, f) += alpha * delta * phi[f];
+        }
+    }
+	else
+    {
+        int currState = convertOneHotToInt(s);
+        double delta = r - q(currState, a);
+        q(currState, a) += alpha * delta;
+    }
+}
+
+/**
+ * Build a feature vector using fourier basis
+ * */
+VectorXd Sarsa::getFeatures(const Eigen::VectorXd& s)
+{
+    VectorXd nextPhi = VectorXd::Zero(numFeatures);
+    VectorXd c = VectorXd::Zero(stateDim);
+
+    for (int f = 0; f < numFeatures; ++f) {
+        c.fill(f);
+        nextPhi[f] = cos(M_PI * s.dot(c));
+    }
+    return nextPhi;
+}
+
+int Sarsa::convertOneHotToInt(VectorXd s)
+{
+    for (int state; state < (int) s.size(); ++state)
+        if (s[state] != 0)
+            return state;
+    return 0;
 }
 
 /*

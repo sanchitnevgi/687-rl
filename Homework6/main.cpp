@@ -189,8 +189,8 @@ void runEnvironment(const string & envName, const int & numTrials)
 int main(int argc, char* argv[])
 {
 	// Run Sarsa and Q-Learning an the Gridworld environment.
-//	cout << "Running Gridworld..." << endl;
-//	runEnvironment("Gridworld", 1000);
+	cout << "Running Gridworld..." << endl;
+	runEnvironment("Gridworld", 1000);
 	// Run Sarsa and Q-Learning an the MountainCar environment.
 	cout << endl << endl << "Running Mountain Car..." << endl;
 	runEnvironment("Mountain Car", 30);

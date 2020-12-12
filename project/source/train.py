@@ -1,5 +1,5 @@
 import csv
-
+import os
 import numpy as np
 import pandas as pd
 
@@ -83,7 +83,7 @@ def policy_to_file(tabular_policy, idx):
     '''
     tabular_policy = tabular_policy.ravel()
 
-    with open(f"./policies/policy{idx}.txt", "w") as f:
+    with open(f"../policy{idx}.txt", "w") as f:
         for e in tabular_policy:
             f.write(str(e) + "\n")
 
@@ -100,8 +100,9 @@ def print_episode_quantiles():
     df = pd.Series(ep_lengths)
     print(df.quantile([.7,.8,.9,.99]))
 
-def create_numpy_array():
-    with open("./safety.csv") as c:
+def create_numpy_array(split="candidate"):
+
+    with open(f"./{split}.csv") as c:
         num_eps = int(next(c))
 
         states = np.zeros((num_eps, 100), dtype=np.int)
@@ -120,10 +121,11 @@ def create_numpy_array():
                 states[ep, t] = int(s_t)
                 actions[ep, t] = int(a_t)
                 rewards[ep, t] = float(r_t)
-    
-    np.save("./safety/states.npy", states)
-    np.save("./safety/actions.npy", actions)
-    np.save("./safety/rewards.npy", rewards)
+
+    os.mkdir(split)
+    np.save(f"./{split}/states.npy", states)
+    np.save(f"./{split}/actions.npy", actions)
+    np.save(f"./{split}/rewards.npy", rewards)
 
 def get_gamma(g = 0.99):
     gamma = np.zeros(100)
@@ -135,7 +137,7 @@ def get_gamma(g = 0.99):
 
 def train():
     print("Reading states, action, rewards")
-    states, actions, rewards = [np.load(f"./data/{name}.npy") for name in ("states", "actions", "rewards")]
+    states, actions, rewards = [np.load(f"./candidate/{name}.npy") for name in ("states", "actions", "rewards")]
 
     # Initial Theta
     theta = np.zeros((18 * 4))
@@ -153,7 +155,7 @@ def evaluate(theta_c):
     pdis = compute_pdis(theta_c, states_s, actions_s, rewards_s)
     test_size = len(pdis)
 
-    t_statistic = t.ppf(confidence, test_size)
+    t_statistic = t.ppf(confidence, test_size - 1)
     std = np.std(pdis)
 
     policy_return = pdis.mean() - std * t_statistic / np.sqrt(test_size)
@@ -161,6 +163,13 @@ def evaluate(theta_c):
     return policy_return
 
 if __name__ == "__main__":
+    print("Creating candidate & Safety split")
+    create_splits()
+
+    print("Creating numpy arrays")
+    create_numpy_array("candidate")
+    create_numpy_array("safety")
+
     print("Creating behavior policy, gamma vector")
     behavior = get_behavior_policy()
     gamma = get_gamma(0.95)
@@ -169,7 +178,7 @@ if __name__ == "__main__":
     BOUND = 1.5
 
     # Generate n "safe" policies
-    n_policies = 5
+    n_policies = 100
     policy_i = 0
 
     while policy_i < n_policies:
@@ -184,6 +193,6 @@ if __name__ == "__main__":
         if _return >= BOUND:
             # Write theta to file
             print("Writing theta to file")
-            policy_to_file(theta_c, policy_i)
+            policy_to_file(theta_c, policy_i + 1)
             policy_i += 1
     
